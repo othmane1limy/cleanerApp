@@ -333,29 +333,27 @@ const CleanerProfileDetail = () => {
     window.open(url, '_blank');
   };
 
-  const handleBooking = () => {
-    // In real app, would navigate to booking flow
-    alert(language === 'ar' ? 'سيتم توجيهك إلى صفحة الحجز' : 'Redirection vers la page de réservation');
+  const handleBooking = (route) => {
+    navigate(route, { 
+      state: { 
+        cleaner: cleanerData, 
+        selectedService: cleanerData?.services?.[0] 
+      } 
+    });
   };
 
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
         title: cleanerData?.name,
-        text: language === 'ar' 
-          ? `تحقق من ${cleanerData?.name} على CleanFinder` 
-          : `Découvrez ${cleanerData?.name} sur CleanFinder`,
-        url: window.location?.href
+        text: `${language === 'ar' ? 'شاهد ملف' : 'Voir le profil de'} ${cleanerData?.name}`,
+        url: window.location.href
       });
-    } else {
-      navigator.clipboard?.writeText(window.location?.href);
-      alert(language === 'ar' ? 'تم نسخ الرابط' : 'Lien copié');
     }
   };
 
   const handleSave = () => {
-    // In real app, would save to favorites
-    alert(language === 'ar' ? 'تم حفظ المنظف في المفضلة' : 'Nettoyeur sauvegardé dans les favoris');
+    // Handle save/bookmark functionality
   };
 
   const handleLanguageChange = (newLanguage) => {
@@ -390,7 +388,7 @@ const CleanerProfileDetail = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Tab Skeleton */}
             <div className="border-b border-border">
               <div className="flex space-x-4 px-4 lg:px-6">
@@ -399,7 +397,7 @@ const CleanerProfileDetail = () => {
                 ))}
               </div>
             </div>
-            
+
             {/* Content Skeleton */}
             <div className="p-4 lg:p-6 space-y-4">
               {[1, 2, 3]?.map(i => (
@@ -492,8 +490,8 @@ const CleanerProfileDetail = () => {
       <ActionBar
         cleaner={cleanerData}
         language={language}
-        onCall={handleCall}
-        onDirections={handleDirections}
+        onCall={() => window.open(`tel:${cleanerData?.phone}`)}
+        onDirections={() => window.open(`https://maps.google.com/?q=${cleanerData?.address}`)}
         onBooking={handleBooking}
         onShare={handleShare}
         onSave={handleSave}

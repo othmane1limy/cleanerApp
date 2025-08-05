@@ -153,40 +153,80 @@ const CleanerInfoCard = ({
         </div>
 
         {/* Quick Actions */}
-        <div className="flex space-x-3 rtl:space-x-reverse">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open(`tel:${cleaner?.phone}`)}
-            iconName="Phone"
-            iconPosition="left"
-            iconSize={16}
-            className="flex-1"
-          >
-            {language === 'ar' ? 'اتصال' : 'Appeler'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open(`https://wa.me/${cleaner?.whatsapp}`)}
-            iconName="MessageCircle"
-            iconPosition="left"
-            iconSize={16}
-            className="flex-1"
-          >
-            WhatsApp
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleViewProfile}
-            iconName="User"
-            iconPosition="left"
-            iconSize={16}
-            className="flex-1"
-          >
-            {language === 'ar' ? 'الملف الشخصي' : 'Voir profil'}
-          </Button>
+        <div className="space-y-3">
+          {/* Booking Buttons */}
+          {cleaner?.serviceType === 'mobile' ? (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => navigate('/mobile-booking', { 
+                state: { 
+                  cleaner, 
+                  selectedService: cleaner?.services?.[0] 
+                } 
+              })}
+              iconName="Car"
+              iconPosition="left"
+              iconSize={16}
+              className="w-full"
+            >
+              {language === 'ar' ? 'حجز خدمة متنقلة' : 'Réserver service mobile'}
+            </Button>
+          ) : (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => navigate('/garage-booking', { 
+                state: { 
+                  cleaner, 
+                  selectedService: cleaner?.services?.[0] 
+                } 
+              })}
+              iconName="Building"
+              iconPosition="left"
+              iconSize={16}
+              className="w-full"
+            >
+              {language === 'ar' ? 'حجز موعد في الكراج' : 'Réserver au garage'}
+            </Button>
+          )}
+          
+          {/* Contact Actions */}
+          <div className="flex space-x-2 rtl:space-x-reverse">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`tel:${cleaner?.phone}`)}
+              iconName="Phone"
+              iconPosition="left"
+              iconSize={16}
+              className="flex-1"
+            >
+              {language === 'ar' ? 'اتصال' : 'Appeler'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`https://wa.me/${cleaner?.whatsapp}`)}
+              iconName="MessageCircle"
+              iconPosition="left"
+              iconSize={16}
+              className="flex-1"
+            >
+              WhatsApp
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleViewProfile}
+              iconName="User"
+              iconPosition="left"
+              iconSize={16}
+              className="flex-1"
+            >
+              {language === 'ar' ? 'الملف' : 'Profil'}
+            </Button>
+          </div>
         </div>
 
         {/* Additional Info */}

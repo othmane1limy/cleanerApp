@@ -24,6 +24,19 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
     return language === 'ar' ? 'احجز الآن' : 'Réserver';
   };
 
+  const handleBooking = () => {
+    // Placeholder for actual booking logic or navigation
+    // This would typically navigate to a booking screen or open a modal
+    if (onBooking) {
+      onBooking();
+    }
+  };
+
+  const getBookingIcon = () => {
+    // Placeholder for dynamic icon based on booking type or context
+    return 'Calendar';
+  };
+
   return (
     <>
       {/* Desktop Action Bar */}
@@ -51,7 +64,6 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
 
             {/* Right Section - Actions */}
             <div className="flex items-center space-x-3 rtl:space-x-reverse">
-              {/* Secondary Actions */}
               <Button
                 variant="outline"
                 size="sm"
@@ -97,11 +109,12 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
 
               <Button
                 variant="default"
-                onClick={onBooking}
-                iconName="Calendar"
+                onClick={handleBooking}
+                iconName={getBookingIcon()}
                 iconPosition="left"
                 iconSize={16}
-                className="min-w-[120px]"
+                size="lg"
+                className="px-8"
               >
                 {getBookingText()}
               </Button>
