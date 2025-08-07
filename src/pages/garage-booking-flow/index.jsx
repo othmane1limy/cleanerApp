@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Icon } from '../../components/ui/Icon';
-import { Button } from '../../components/ui/Button';
-import { GlobalHeader } from '../../components/ui/GlobalHeader';
-import { NavigationBreadcrumb } from '../../components/ui/NavigationBreadcrumb';
+import Icon from '../../components/AppIcon';
+import Button from '../../components/ui/Button';
+import GlobalHeader from '../../components/ui/GlobalHeader';
+import NavigationBreadcrumb from '../../components/ui/NavigationBreadcrumb';
 
 const GarageBookingFlow = () => {
   const [language, setLanguage] = useState('fr');

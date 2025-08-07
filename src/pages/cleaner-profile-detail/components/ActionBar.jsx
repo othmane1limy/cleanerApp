@@ -1,8 +1,11 @@
 import React from 'react';
 import Button from '../../../components/ui/Button';
 import Icon from '../../../components/AppIcon';
+import { useNavigate } from 'react-router-dom';
 
 const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare, onSave }) => {
+  const navigate = useNavigate();
+
   const formatPhoneNumber = (phone) => {
     // Format Moroccan phone number for display
     if (phone?.startsWith('+212')) {
@@ -109,7 +112,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
 
               <Button
                 variant="default"
-                onClick={handleBooking}
+                onClick={() => navigate('/mobile-booking')}
                 iconName={getBookingIcon()}
                 iconPosition="left"
                 iconSize={16}
@@ -176,7 +179,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
 
             <Button
               variant="default"
-              onClick={onBooking}
+              onClick={() => navigate('/mobile-booking')}
               iconName="Calendar"
               iconPosition="left"
               iconSize={18}

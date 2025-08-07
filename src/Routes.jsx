@@ -12,6 +12,9 @@ import MobileBookingFlow from './pages/mobile-booking-flow';
 import BookingPending from './pages/booking-pending';
 import GarageBookingFlow from './pages/garage-booking-flow';
 import BookingConfirmation from './pages/booking-confirmation';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import CleanerDashboard from './pages/cleaner-dashboard';
 
 
 const Routes = () => {
@@ -31,6 +34,9 @@ const Routes = () => {
         <Route path="/booking-pending" element={<BookingPending />} />
         <Route path="/garage-booking" element={<GarageBookingFlow />} />
         <Route path="/booking-confirmation" element={<BookingConfirmation />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/cleaner-dashboard" element={<CleanerDashboard />} />
         <Route path="*" element={<NotFound />} />
       </RouterRoutes>
       </ErrorBoundary>
