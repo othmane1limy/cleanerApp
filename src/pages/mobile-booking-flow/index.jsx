@@ -153,17 +153,19 @@ const MobileBookingFlow = () => {
             <div className="flex items-center space-x-3 rtl:space-x-reverse">
               <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
                 <img
-                  src={cleaner.profileImage}
-                  alt={cleaner.name}
+                  src={cleaner?.profileImage || cleaner?.profile_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"}
+                  alt={cleaner?.name || `${cleaner?.first_name} ${cleaner?.last_name}`}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex-1">
-                <h3 className="font-heading font-semibold text-foreground">{cleaner.name}</h3>
+                <h3 className="font-heading font-semibold text-foreground">
+                  {cleaner?.name || `${cleaner?.first_name} ${cleaner?.last_name}`}
+                </h3>
                 <div className="flex items-center space-x-2 rtl:space-x-reverse">
                   <Icon name="Star" size={14} className="text-warning fill-current" />
                   <span className="text-sm text-muted-foreground">
-                    {cleaner.rating} ({cleaner.totalReviews})
+                    {cleaner?.rating || 0} ({cleaner?.totalReviews || cleaner?.total_reviews || 0})
                   </span>
                   <span className="text-muted-foreground">•</span>
                   <span className="text-sm text-muted-foreground">

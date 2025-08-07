@@ -28,7 +28,7 @@ const Routes = () => {
         <Route path="/service-discovery-list-view" element={<ServiceDiscoveryListView />} />
         <Route path="/location-permission-handler" element={<LocationPermissionHandler />} />
         <Route path="/service-discovery-map-view" element={<ServiceDiscoveryMapView />} />
-        <Route path="/cleaner-profile-detail" element={<CleanerProfileDetail />} />
+        <Route path="/cleaner-profile-detail/:cleanerId" element={<CleanerProfileDetail />} />
         <Route path="/search-and-filter-interface" element={<SearchAndFilterInterface />} />
         <Route path="/mobile-booking" element={<MobileBookingFlow />} />
         <Route path="/booking-pending" element={<BookingPending />} />

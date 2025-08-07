@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
+import { cleanerService, reviewService } from '../../lib/supabase';
 import GlobalHeader from '../../components/ui/GlobalHeader';
 import NavigationBreadcrumb from '../../components/ui/NavigationBreadcrumb';
 import ProfileHero from './components/ProfileHero';
@@ -11,14 +13,20 @@ import AvailabilitySchedule from './components/AvailabilitySchedule';
 import ActionBar from './components/ActionBar';
 import Button from '../../components/ui/Button';
 
-
 const CleanerProfileDetail = () => {
   const [language, setLanguage] = useState('fr');
   const [activeTab, setActiveTab] = useState('services');
   const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
+  const [cleanerData, setCleanerData] = useState(null);
+  const [servicesData, setServicesData] = useState([]);
+  const [galleryPhotos, setGalleryPhotos] = useState([]);
+  const [reviewsData, setReviewsData] = useState([]);
+  const [error, setError] = useState(null);
+  
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { cleanerId } = useParams();
 
   // Load language preference
   useEffect(() => {
@@ -47,198 +55,114 @@ const CleanerProfileDetail = () => {
     }
   }, []);
 
-  // Simulate loading
+  // Fetch cleaner data from Supabase
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchCleanerData = async () => {
+      if (!cleanerId) return;
+      
+      try {
+        setIsLoading(true);
+        setError(null);
 
-  // Mock cleaner data
-  const cleanerData = {
-    id: "cleaner_001",
-    name: "Ahmed Benali",
-    profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-    rating: 4.8,
-    totalReviews: 127,
-    isOnline: true,
-    serviceType: "mobile",
-    phone: "+212661234567",
-    email: "ahmed.benali@cleanfinder.ma",
-    completedJobs: 342,
-    responseTime: "< 15min",
-    experienceYears: 5,
-    distance: 2.3,
-    location: {
-      lat: 33.5731,
-      lng: -7.5898,
-      address: language === 'ar' ? 'الدار البيضاء، المغرب' : 'Casablanca, Maroc'
-    },
-    description: language === 'ar' 
-      ? `خبير في تنظيف السيارات مع أكثر من 5 سنوات من الخبرة. أقدم خدمات تنظيف عالية الجودة باستخدام منتجات صديقة للبيئة. متخصص في التنظيف الداخلي والخارجي والتلميع المتقدم.`
-      : `Expert en nettoyage automobile avec plus de 5 ans d'expérience. Je propose des services de nettoyage de haute qualité en utilisant des produits écologiques. Spécialisé dans le nettoyage intérieur, extérieur et le détailing avancé.`,
-    certifications: [
-      language === 'ar' ? 'شهادة تنظيف السيارات المهنية' : 'Certification Nettoyage Auto Professionnel',
-      language === 'ar' ? 'تدريب المنتجات البيئية' : 'Formation Produits Écologiques'
-    ]
-  };
+        // Fetch cleaner profile with services and gallery
+        const { data: cleaner, error: cleanerError } = await cleanerService.getCleanerById(cleanerId);
+        
+        if (cleanerError) {
+          console.error('Error fetching cleaner:', cleanerError);
+          setError('Failed to load cleaner profile');
+          return;
+        }
 
-  // Mock services data
-  const servicesData = [
-    {
-      id: "service_001",
-      type: "exterior",
-      name: language === 'ar' ? 'غسيل خارجي شامل' : 'Lavage extérieur complet',
-      description: language === 'ar' ?'غسيل شامل للجزء الخارجي من السيارة مع تنظيف الإطارات والجنوط وتلميع الهيكل' :'Lavage complet de l\'extérieur avec nettoyage des pneus, jantes et lustrage de la carrosserie',
-      price: 80,
-      originalPrice: 100,
-      duration: 45,
-      isPopular: true,
-      isEco: true,
-      includes: [
-        language === 'ar' ? 'غسيل الهيكل' : 'Lavage carrosserie',
-        language === 'ar' ? 'تنظيف الإطارات' : 'Nettoyage pneus',
-        language === 'ar' ? 'تلميع الزجاج' : 'Lustrage vitres',
-        language === 'ar' ? 'تنظيف الجنوط' : 'Nettoyage jantes'
-      ]
-    },
-    {
-      id: "service_002", 
-      type: "interior",
-      name: language === 'ar' ? 'تنظيف داخلي متقدم' : 'Nettoyage intérieur avancé',
-      description: language === 'ar' ?'تنظيف عميق للمقاعد والسجاد ولوحة القيادة مع تعطير وتعقيم' :'Nettoyage en profondeur des sièges, tapis, tableau de bord avec parfumage et désinfection',
-      price: 120,
-      duration: 60,
-      isPopular: false,
-      isEco: true,
-      includes: [
-        language === 'ar' ? 'تنظيف المقاعد' : 'Nettoyage sièges',
-        language === 'ar' ? 'تنظيف السجاد' : 'Nettoyage tapis',
-        language === 'ar' ? 'تلميع لوحة القيادة' : 'Lustrage tableau de bord',
-        language === 'ar' ? 'تعطير وتعقيم' : 'Parfumage et désinfection'
-      ]
-    },
-    {
-      id: "service_003",
-      type: "complete",
-      name: language === 'ar' ? 'خدمة شاملة' : 'Service complet',
-      description: language === 'ar' ?'خدمة تنظيف شاملة تجمع بين التنظيف الداخلي والخارجي مع التلميع' :'Service de nettoyage complet combinant intérieur, extérieur et lustrage',
-      price: 180,
-      originalPrice: 220,
-      duration: 90,
-      isPopular: true,
-      isEco: true,
-      includes: [
-        language === 'ar' ? 'جميع خدمات التنظيف الخارجي' : 'Tous services extérieur',
-        language === 'ar' ? 'جميع خدمات التنظيف الداخلي' : 'Tous services intérieur',
-        language === 'ar' ? 'تلميع متقدم' : 'Lustrage avancé',
-        language === 'ar' ? 'حماية الطلاء' : 'Protection peinture'
-      ]
-    },
-    {
-      id: "service_004",
-      type: "detailing",
-      name: language === 'ar' ? 'تفصيل متقدم' : 'Détailing premium',
-      description: language === 'ar' ?'خدمة تفصيل متقدمة مع تلميع احترافي وحماية طويلة المدى' :'Service de détailing premium avec lustrage professionnel et protection longue durée',
-      price: 300,
-      duration: 150,
-      isPopular: false,
-      isEco: false,
-      includes: [
-        language === 'ar' ? 'تنظيف عميق شامل' : 'Nettoyage complet approfondi',
-        language === 'ar' ? 'تلميع احترافي' : 'Lustrage professionnel',
-        language === 'ar' ? 'حماية السيراميك' : 'Protection céramique',
-        language === 'ar' ? 'تنظيف المحرك' : 'Nettoyage moteur'
-      ]
-    }
-  ];
+        if (!cleaner) {
+          setError('Cleaner not found');
+          return;
+        }
 
-  // Mock gallery photos
-  const galleryPhotos = [
-    {
-      url: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
-      caption: language === 'ar' ? 'قبل التنظيف - سيارة متسخة' : 'Avant nettoyage - Voiture sale',
-      category: "before"
-    },
-    {
-      url: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=400&h=300&fit=crop",
-      caption: language === 'ar' ? 'بعد التنظيف - نتيجة مثالية' : 'Après nettoyage - Résultat parfait',
-      category: "after"
-    },
-    {
-      url: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=400&h=300&fit=crop",
-      caption: language === 'ar' ? 'تنظيف المقاعد الجلدية' : 'Nettoyage sièges cuir',
-      category: "process"
-    },
-    {
-      url: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=400&h=300&fit=crop",
-      caption: language === 'ar' ? 'تلميع الهيكل الخارجي' : 'Lustrage carrosserie extérieure',
-      category: "process"
-    },
-    {
-      url: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=400&h=300&fit=crop",
-      caption: language === 'ar' ? 'معدات التنظيف المهنية' : 'Équipement professionnel',
-      category: "equipment"
-    },
-    {
-      url: "https://images.unsplash.com/photo-1551522435-a13afa10f103?w=400&h=300&fit=crop",
-      caption: language === 'ar' ? 'مساحة العمل المنظمة' : 'Espace de travail organisé',
-      category: "workspace"
-    }
-  ];
+        // Transform cleaner data to match component expectations
+        const transformedCleaner = {
+          id: cleaner.user_id,
+          name: `${cleaner.first_name} ${cleaner.last_name}`,
+          businessName: cleaner.business_name,
+          profileImage: cleaner.profile_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+          rating: cleaner.rating || 0,
+          totalReviews: cleaner.total_reviews || 0,
+          isOnline: cleaner.is_active,
+          serviceType: cleaner.is_mobile ? "mobile" : "garage",
+          phone: cleaner.phone,
+          completedJobs: 0, // This would need to be calculated from bookings
+          responseTime: "< 15min", // This would need to be calculated
+          experienceYears: 5, // This would need to be added to schema
+          distance: 2.3, // This would need to be calculated based on user location
+          location: {
+            lat: 33.5731, // This would need to be stored in schema
+            lng: -7.5898,
+            address: cleaner.service_area
+          },
+          description: cleaner.bio || (language === 'ar' 
+            ? `خبير في تنظيف السيارات. أقدم خدمات تنظيف عالية الجودة باستخدام منتجات صديقة للبيئة.`
+            : `Expert en nettoyage automobile. Je propose des services de nettoyage de haute qualité en utilisant des produits écologiques.`),
+          certifications: [], // This would need to be added to schema
+          isActive: cleaner.is_active,
+          hasMobile: cleaner.is_mobile,
+          hasGarage: cleaner.has_garage,
+          garageAddress: cleaner.garage_address,
+          workingHours: cleaner.working_hours
+        };
 
-  // Mock reviews data
-  const reviewsData = [
-    {
-      id: "review_001",
-      customerName: "Youssef Alami",
-      customerAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face",
-      rating: 5,
-      date: new Date(Date.now() - 86400000 * 2),
-      serviceType: "complete",
-      comment: language === 'ar'
-        ? `خدمة ممتازة جداً! أحمد محترف حقيقي وقام بتنظيف سيارتي بشكل مثالي. النتيجة فاقت توقعاتي والسعر معقول جداً. أنصح به بشدة!`
-        : `Service excellent ! Ahmed est un vrai professionnel qui a nettoyé ma voiture parfaitement. Le résultat a dépassé mes attentes et le prix est très raisonnable. Je le recommande vivement !`,
-      isVerified: true,
-      helpfulCount: 12,
-      photos: [
-        "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=100&h=100&fit=crop"
-      ],
-      cleanerResponse: {
-        date: new Date(Date.now() - 86400000 * 1),
-        message: language === 'ar'
-          ? `شكراً لك يوسف على هذا التقييم الرائع! سعيد جداً أن الخدمة أعجبتك. أتطلع للعمل معك مرة أخرى قريباً.`
-          : `Merci Youssef pour cet excellent avis ! Je suis très heureux que le service vous ait plu. J'ai hâte de travailler avec vous à nouveau bientôt.`
+        setCleanerData(transformedCleaner);
+
+        // Transform services data
+        const transformedServices = cleaner.cleaner_services?.map(service => ({
+          id: service.id,
+          type: service.name.toLowerCase().includes('exterior') ? 'exterior' : 
+                service.name.toLowerCase().includes('interior') ? 'interior' : 'complete',
+          name: service.name,
+          description: service.description || '',
+          price: parseFloat(service.price),
+          duration: service.duration || 60,
+          isPopular: false, // This would need to be calculated
+          isEco: true, // This would need to be added to schema
+          includes: [] // This would need to be added to schema
+        })) || [];
+
+        setServicesData(transformedServices);
+
+        // Transform gallery data
+        const transformedGallery = cleaner.cleaner_gallery?.map(image => ({
+          url: image.image_url,
+          caption: image.caption || '',
+          category: "work" // This would need to be added to schema
+        })) || [];
+
+        setGalleryPhotos(transformedGallery);
+
+        // Transform reviews data
+        const transformedReviews = cleaner.reviews?.map(review => ({
+          id: review.id,
+          customerName: `${review.client_profiles?.first_name} ${review.client_profiles?.last_name}`,
+          customerAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face",
+          rating: review.rating,
+          date: new Date(review.created_at),
+          serviceType: "complete",
+          comment: review.comment,
+          isVerified: true,
+          helpfulCount: 0 // This would need to be added to schema
+        })) || [];
+
+        setReviewsData(transformedReviews);
+
+      } catch (error) {
+        console.error('Error fetching cleaner data:', error);
+        setError('Failed to load cleaner profile');
+      } finally {
+        setIsLoading(false);
       }
-    },
-    {
-      id: "review_002",
-      customerName: "Fatima Benkirane",
-      customerAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face",
-      rating: 5,
-      date: new Date(Date.now() - 86400000 * 5),
-      serviceType: "interior",
-      comment: language === 'ar'? `تنظيف داخلي رائع! المقاعد أصبحت كالجديدة والرائحة منعشة جداً. أحمد دقيق في عمله ومهذب في التعامل.`: `Nettoyage intérieur fantastique ! Les sièges sont comme neufs et l'odeur est très fraîche. Ahmed est précis dans son travail et poli dans ses relations.`,
-      isVerified: true,
-      helpfulCount: 8
-    },
-    {
-      id: "review_003",
-      customerName: "Omar Tazi",
-      customerAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face",
-      rating: 4,
-      date: new Date(Date.now() - 86400000 * 10),
-      serviceType: "exterior",
-      comment: language === 'ar'
-        ? `خدمة جيدة جداً، السيارة أصبحت لامعة ونظيفة. الوقت كان أطول قليلاً من المتوقع لكن النتيجة ممتازة.`
-        : `Très bon service, la voiture est brillante et propre. Le temps était un peu plus long que prévu mais le résultat est excellent.`,
-      isVerified: false,
-      helpfulCount: 5
-    }
-  ];
+    };
 
-  // Mock availability schedule
+    fetchCleanerData();
+  }, [cleanerId, language]);
+
+  // Mock availability schedule (this would need to be implemented in schema)
   const availabilitySchedule = {
     monday: {
       isAvailable: true,
@@ -317,27 +241,31 @@ const CleanerProfileDetail = () => {
 
   // Calculate distance (mock calculation)
   const calculateDistance = () => {
-    if (!userLocation) return cleanerData?.distance;
+    if (!userLocation || !cleanerData) return cleanerData?.distance || 0;
     // Mock distance calculation - in real app would use proper geolocation
-    return cleanerData?.distance;
+    return cleanerData?.distance || 0;
   };
 
   // Handle actions
   const handleCall = () => {
-    window.location.href = `tel:${cleanerData?.phone}`;
+    if (cleanerData?.phone) {
+      window.location.href = `tel:${cleanerData.phone}`;
+    }
   };
 
   const handleDirections = () => {
-    const { lat, lng } = cleanerData?.location;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-    window.open(url, '_blank');
+    const { lat, lng } = cleanerData?.location || {};
+    if (lat && lng) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      window.open(url, '_blank');
+    }
   };
 
   const handleBooking = (route) => {
     navigate(route, { 
       state: { 
         cleaner: cleanerData, 
-        selectedService: cleanerData?.services?.[0] 
+        selectedService: servicesData?.[0] 
       } 
     });
   };
@@ -363,13 +291,36 @@ const CleanerProfileDetail = () => {
 
   // Tab counts
   const tabCounts = {
-    services: servicesData?.length,
-    photos: galleryPhotos?.length,
-    reviews: reviewsData?.length
+    services: servicesData?.length || 0,
+    photos: galleryPhotos?.length || 0,
+    reviews: reviewsData?.length || 0
   };
 
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <GlobalHeader 
+          showViewToggle={false}
+          onLanguageChange={handleLanguageChange}
+        />
+        <div className="pt-15 px-4 lg:px-6 py-8">
+          <div className="text-center">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
+              {language === 'ar' ? 'خطأ في تحميل البيانات' : 'Erreur de chargement'}
+            </h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              {language === 'ar' ? 'إعادة المحاولة' : 'Réessayer'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Loading state
-  if (isLoading) {
+  if (isLoading || !cleanerData) {
     return (
       <div className="min-h-screen bg-background">
         <GlobalHeader 
@@ -490,8 +441,8 @@ const CleanerProfileDetail = () => {
       <ActionBar
         cleaner={cleanerData}
         language={language}
-        onCall={() => window.open(`tel:${cleanerData?.phone}`)}
-        onDirections={() => window.open(`https://maps.google.com/?q=${cleanerData?.address}`)}
+        onCall={handleCall}
+        onDirections={handleDirections}
         onBooking={handleBooking}
         onShare={handleShare}
         onSave={handleSave}

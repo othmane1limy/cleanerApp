@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../../components/ui/Button';
@@ -19,7 +18,7 @@ const CleanerCard = ({ cleaner }) => {
   };
 
   const handleViewProfile = () => {
-    navigate(`/cleaner-profile/${cleaner.user_id}`);
+    navigate(`/cleaner-profile-detail/${cleaner?.user_id}`);
   };
 
   const formatWorkingHours = (hours) => {
