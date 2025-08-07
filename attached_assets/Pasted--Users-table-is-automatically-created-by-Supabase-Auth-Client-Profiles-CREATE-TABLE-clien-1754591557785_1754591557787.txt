@@ -1,0 +1,197 @@
+
+-- Users table is automatically created by Supabase Auth
+
+-- Client Profiles
+CREATE TABLE client_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20),
+  avatar_url TEXT,
+  address TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Cleaner Profiles
+CREATE TABLE cleaner_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20),
+  business_name VARCHAR(200),
+  national_id VARCHAR(50) NOT NULL,
+  business_license VARCHAR(100),
+  vehicle_registration VARCHAR(50),
+  service_area VARCHAR(200) NOT NULL,
+  is_mobile BOOLEAN DEFAULT true,
+  has_garage BOOLEAN DEFAULT false,
+  garage_address TEXT,
+  working_hours JSONB DEFAULT '{"start": "08:00", "end": "18:00"}',
+  is_active BOOLEAN DEFAULT false,
+  is_verified BOOLEAN DEFAULT false,
+  rating DECIMAL(3,2) DEFAULT 0,
+  review_count INTEGER DEFAULT 0,
+  avatar_url TEXT,
+  cover_image_url TEXT,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Cleaner Services
+CREATE TABLE cleaner_services (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name VARCHAR(200) NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  duration_minutes INTEGER DEFAULT 60,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Cleaner Images/Gallery
+CREATE TABLE cleaner_images (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  image_url TEXT NOT NULL,
+  alt_text VARCHAR(200),
+  is_cover BOOLEAN DEFAULT false,
+  order_index INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Bookings
+CREATE TABLE bookings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  service_id UUID REFERENCES cleaner_services(id),
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled')),
+  booking_type VARCHAR(20) DEFAULT 'mobile' CHECK (booking_type IN ('mobile', 'garage')),
+  scheduled_date DATE NOT NULL,
+  scheduled_time TIME NOT NULL,
+  client_address TEXT,
+  total_price DECIMAL(10,2) NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Reviews
+CREATE TABLE reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+  client_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_cleaner_profiles_user_id ON cleaner_profiles(user_id);
+CREATE INDEX idx_client_profiles_user_id ON client_profiles(user_id);
+CREATE INDEX idx_cleaner_services_cleaner_id ON cleaner_services(cleaner_id);
+CREATE INDEX idx_bookings_client_id ON bookings(client_id);
+CREATE INDEX idx_bookings_cleaner_id ON bookings(cleaner_id);
+CREATE INDEX idx_reviews_cleaner_id ON reviews(cleaner_id);
+
+-- Row Level Security Policies
+ALTER TABLE client_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cleaner_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cleaner_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cleaner_images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+
+-- Client profiles policies
+CREATE POLICY "Users can view their own client profile" ON client_profiles
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own client profile" ON client_profiles
+  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own client profile" ON client_profiles
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Cleaner profiles policies
+CREATE POLICY "Anyone can view verified cleaner profiles" ON cleaner_profiles
+  FOR SELECT USING (is_verified = true);
+CREATE POLICY "Cleaners can view their own profile" ON cleaner_profiles
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Cleaners can update their own profile" ON cleaner_profiles
+  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Cleaners can insert their own profile" ON cleaner_profiles
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Cleaner services policies
+CREATE POLICY "Anyone can view active services" ON cleaner_services
+  FOR SELECT USING (is_active = true);
+CREATE POLICY "Cleaners can manage their own services" ON cleaner_services
+  FOR ALL USING (auth.uid() = cleaner_id);
+
+-- Cleaner images policies
+CREATE POLICY "Anyone can view cleaner images" ON cleaner_images
+  FOR SELECT USING (true);
+CREATE POLICY "Cleaners can manage their own images" ON cleaner_images
+  FOR ALL USING (auth.uid() = cleaner_id);
+
+-- Bookings policies
+CREATE POLICY "Users can view their own bookings" ON bookings
+  FOR SELECT USING (auth.uid() = client_id OR auth.uid() = cleaner_id);
+CREATE POLICY "Clients can create bookings" ON bookings
+  FOR INSERT WITH CHECK (auth.uid() = client_id);
+CREATE POLICY "Users can update their own bookings" ON bookings
+  FOR UPDATE USING (auth.uid() = client_id OR auth.uid() = cleaner_id);
+
+-- Reviews policies
+CREATE POLICY "Anyone can view reviews" ON reviews
+  FOR SELECT USING (true);
+CREATE POLICY "Clients can create reviews" ON reviews
+  FOR INSERT WITH CHECK (auth.uid() = client_id);
+
+-- Functions to handle profile creation
+CREATE OR REPLACE FUNCTION handle_new_user() 
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.raw_user_meta_data->>'user_type' = 'client' THEN
+    INSERT INTO client_profiles (user_id, first_name, last_name, phone)
+    VALUES (
+      NEW.id,
+      NEW.raw_user_meta_data->>'first_name',
+      NEW.raw_user_meta_data->>'last_name',
+      NEW.raw_user_meta_data->>'phone'
+    );
+  ELSIF NEW.raw_user_meta_data->>'user_type' = 'cleaner' THEN
+    INSERT INTO cleaner_profiles (
+      user_id, first_name, last_name, phone, business_name,
+      national_id, business_license, vehicle_registration,
+      service_area, is_mobile, has_garage, garage_address, working_hours
+    )
+    VALUES (
+      NEW.id,
+      NEW.raw_user_meta_data->>'first_name',
+      NEW.raw_user_meta_data->>'last_name',
+      NEW.raw_user_meta_data->>'phone',
+      NEW.raw_user_meta_data->>'business_name',
+      NEW.raw_user_meta_data->>'national_id',
+      NEW.raw_user_meta_data->>'business_license',
+      NEW.raw_user_meta_data->>'vehicle_registration',
+      NEW.raw_user_meta_data->>'service_area',
+      (NEW.raw_user_meta_data->>'is_mobile')::boolean,
+      (NEW.raw_user_meta_data->>'has_garage')::boolean,
+      NEW.raw_user_meta_data->>'garage_address',
+      NEW.raw_user_meta_data->'working_hours'
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for new user creation
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE handle_new_user();
