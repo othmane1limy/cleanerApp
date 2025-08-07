@@ -10,11 +10,12 @@ import SortDropdown from './components/SortDropdown';
 import LoadingSkeleton from './components/LoadingSkeleton';
 import EmptyState from './components/EmptyState';
 import PullToRefresh from './components/PullToRefresh';
+import { cleanerService } from '../../lib/supabase';
 
 const ServiceDiscoveryListView = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // State management
   const [language, setLanguage] = useState('fr');
   const [cleaners, setCleaners] = useState([]);
@@ -39,106 +40,6 @@ const ServiceDiscoveryListView = () => {
     specialties: []
   });
 
-  // Mock data for cleaners
-  const mockCleaners = [
-    {
-      id: 1,
-      name: "Ahmed Benali",
-      profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      rating: 4.8,
-      reviewCount: 127,
-      distance: 0.8,
-      isOnline: true,
-      isMobile: true,
-      hasGarage: false,
-      startingPrice: 45,
-      isPromoted: true,
-      services: ["Lavage extérieur", "Nettoyage intérieur", "Cire", "Aspirateur"],
-      specialties: ["eco", "mobile"],
-      availability: "now"
-    },
-    {
-      id: 2,
-      name: "Fatima Zahra",
-      profileImage: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-      rating: 4.9,
-      reviewCount: 203,
-      distance: 1.2,
-      isOnline: true,
-      isMobile: false,
-      hasGarage: true,
-      startingPrice: 35,
-      isPromoted: false,
-      services: ["Service complet", "Détailing", "Protection céramique"],
-      specialties: ["luxury", "express"],
-      availability: "today"
-    },
-    {
-      id: 3,
-      name: "Youssef Alami",
-      profileImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-      rating: 4.6,
-      reviewCount: 89,
-      distance: 2.1,
-      isOnline: false,
-      isMobile: true,
-      hasGarage: true,
-      startingPrice: 55,
-      isPromoted: false,
-      services: ["Lavage premium", "Nettoyage moteur", "Polissage"],
-      specialties: ["mobile", "luxury"],
-      availability: "tomorrow"
-    },
-    {
-      id: 4,
-      name: "Khadija Mansouri",
-      profileImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-      rating: 4.7,
-      reviewCount: 156,
-      distance: 1.8,
-      isOnline: true,
-      isMobile: true,
-      hasGarage: false,
-      startingPrice: 40,
-      isPromoted: true,
-      services: ["Éco-lavage", "Nettoyage bio", "Service rapide"],
-      specialties: ["eco", "express"],
-      availability: "now"
-    },
-    {
-      id: 5,
-      name: "Omar Benjelloun",
-      profileImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-      rating: 4.5,
-      reviewCount: 74,
-      distance: 3.2,
-      isOnline: true,
-      isMobile: false,
-      hasGarage: true,
-      startingPrice: 65,
-      isPromoted: false,
-      services: ["Détailing complet", "Restauration peinture", "Protection"],
-      specialties: ["luxury"],
-      availability: "week"
-    },
-    {
-      id: 6,
-      name: "Aicha Idrissi",
-      profileImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
-      rating: 4.8,
-      reviewCount: 198,
-      distance: 1.5,
-      isOnline: true,
-      isMobile: true,
-      hasGarage: true,
-      startingPrice: 50,
-      isPromoted: false,
-      services: ["Service mobile", "Nettoyage intérieur", "Désinfection"],
-      specialties: ["mobile", "eco"],
-      availability: "today"
-    }
-  ];
-
   // Load saved language preference
   useEffect(() => {
     const savedLanguage = localStorage.getItem('cleanfinder-language') || 'fr';
@@ -162,11 +63,15 @@ const ServiceDiscoveryListView = () => {
       setIsLoading(isRefresh ? false : true);
       setHasError(false);
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setCleaners(mockCleaners);
-      setHasMoreData(false); // No pagination in mock data
+      // Fetch data from Supabase
+      const { data, error } = await cleanerService.getCleaners();
+      if (error) {
+        console.error('Error loading cleaners:', error);
+        setHasError(true);
+      } else {
+        setCleaners(data || []);
+        setFilteredCleaners(data || []); // Initialize filtered cleaners with all data
+      }
     } catch (error) {
       console.error('Error loading cleaners:', error);
       setHasError(true);
@@ -211,10 +116,10 @@ const ServiceDiscoveryListView = () => {
     if (activeFilters?.serviceType) {
       filtered = filtered?.filter(cleaner => {
         const serviceMap = {
-          exterior: ['Lavage extérieur'],
-          interior: ['Nettoyage intérieur'],
-          complete: ['Service complet'],
-          detailing: ['Détailing']
+          exterior: ["Lavage extérieur"],
+          interior: ["Nettoyage intérieur"],
+          complete: ["Service complet"],
+          detailing: ["Détailing"]
         };
         return cleaner?.services?.some(service => 
           serviceMap?.[activeFilters?.serviceType]?.some(s => service?.includes(s))
@@ -380,7 +285,7 @@ const ServiceDiscoveryListView = () => {
                 onSortChange={setCurrentSort}
                 language={language}
               />
-              
+
               <Button
                 variant="outline"
                 size="sm"

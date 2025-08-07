@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import GlobalHeader from '../../components/ui/GlobalHeader';
 import NavigationBreadcrumb from '../../components/ui/NavigationBreadcrumb';
+import { useAuth } from '../../contexts/AuthContext';
+import { bookingService } from '../../lib/supabase';
 
 const MobileBookingFlow = () => {
   const [language, setLanguage] = useState('fr');
@@ -12,7 +13,20 @@ const MobileBookingFlow = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
-  const { cleaner, selectedService } = location.state || {};
+  const { user } = useAuth();
+  const cleaner = location.state?.cleaner;
+
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [bookingData, setBookingData] = useState({
+    selectedService: null,
+    selectedDate: '',
+    selectedTime: '',
+    locationAddress: '',
+    phoneNumber: '',
+    specialRequests: ''
+  });
 
   // Available add-ons
   const addOns = [
@@ -46,16 +60,48 @@ const MobileBookingFlow = () => {
     });
   };
 
-  const handleConfirmBooking = () => {
-    const bookingData = {
-      cleaner,
-      selectedService,
-      selectedAddOns,
-      totalPrice,
-      bookingType: 'mobile',
-      status: 'pending'
-    };
-    navigate('/booking-pending', { state: { bookingData } });
+  const handleConfirmBooking = async () => {
+    if (!user) {
+      setError(language === 'ar' ? 'يجب أن تكون مسجلاً للدخول للحجز' : 'Vous devez être connecté pour réserver');
+      return;
+    }
+    if (!cleaner || !selectedService) {
+      setError(language === 'ar' ? 'بيانات الحجز غير مكتملة' : 'Données de réservation incomplètes');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const booking = {
+        client_id: user.id,
+        cleaner_id: cleaner.user_id,
+        service_id: selectedService.id, // Assuming selectedService has an 'id'
+        booking_type: 'mobile',
+        scheduled_date: new Date().toISOString().split('T')[0], // Example: use current date
+        scheduled_time: new Date().toTimeString().split(' ')[0], // Example: use current time
+        location_address: cleaner.address, // Placeholder, ideally from user input
+        total_amount: totalPrice,
+        notes: selectedAddOns.map(addon => addon.name).join(', ') // Example: join add-on names as notes
+      };
+
+      // Assuming bookingService.createBooking is implemented in supabase.js
+      // and returns { data, error }
+      const { data, error } = await bookingService.createBooking(booking);
+
+      if (error) {
+        setError(language === 'ar' ? 'خطأ في إنشاء الحجز' : 'Erreur lors de la création de la réservation');
+        console.error('Supabase booking error:', error);
+      } else {
+        navigate('/booking-confirmation', { state: { bookingId: data.id } });
+      }
+    } catch (err) {
+      setError(language === 'ar' ? 'حدث خطأ غير متوقع' : 'Une erreur inattendue est survenue');
+      console.error('Booking flow error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getTotalDuration = () => {
@@ -81,12 +127,12 @@ const MobileBookingFlow = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <GlobalHeader 
+      <GlobalHeader
         onLanguageChange={setLanguage}
         currentLocation={language === 'ar' ? 'المغرب' : 'Maroc'}
       />
       <NavigationBreadcrumb language={language} />
-      
+
       <div className="pt-15 pb-32 md:pb-24">
         <div className="max-w-2xl mx-auto px-4">
           {/* Header */}
@@ -106,8 +152,8 @@ const MobileBookingFlow = () => {
           <div className="bg-card rounded-lg border border-border p-4 mb-6">
             <div className="flex items-center space-x-3 rtl:space-x-reverse">
               <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
-                <img 
-                  src={cleaner.profileImage} 
+                <img
+                  src={cleaner.profileImage}
                   alt={cleaner.name}
                   className="w-full h-full object-cover"
                 />
@@ -157,11 +203,11 @@ const MobileBookingFlow = () => {
               {addOns.map((addOn) => {
                 const isSelected = selectedAddOns.find(item => item.id === addOn.id);
                 return (
-                  <div 
+                  <div
                     key={addOn.id}
                     className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
-                      isSelected 
-                        ? 'border-primary bg-primary/5' 
+                      isSelected
+                        ? 'border-primary bg-primary/5'
                         : 'border-border hover:border-primary/50'
                     }`}
                     onClick={() => handleAddOnToggle(addOn)}
@@ -208,12 +254,16 @@ const MobileBookingFlow = () => {
           </div>
 
           {/* Action Button */}
-          <Button 
+          {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+          <Button
             onClick={handleConfirmBooking}
             className="w-full"
             size="lg"
+            disabled={loading}
           >
-            {language === 'ar' ? 'تأكيد الحجز' : 'Confirmer la réservation'}
+            {loading
+              ? (language === 'ar' ? 'جاري الحجز...' : 'Réservation en cours...')
+              : (language === 'ar' ? 'تأكيد الحجز' : 'Confirmer la réservation')}
           </Button>
         </div>
       </div>
