@@ -1,4 +1,3 @@
-
 -- Users table is automatically created by Supabase Auth
 
 -- Client Profiles
@@ -44,7 +43,7 @@ CREATE TABLE cleaner_profiles (
 -- Cleaner Services
 CREATE TABLE cleaner_services (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  cleaner_id UUID REFERENCES cleaner_profiles(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
   description TEXT,
   price DECIMAL(10,2) NOT NULL,
@@ -57,7 +56,7 @@ CREATE TABLE cleaner_services (
 -- Cleaner Images/Gallery
 CREATE TABLE cleaner_images (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  cleaner_id UUID REFERENCES cleaner_profiles(id) ON DELETE CASCADE,
   image_url TEXT NOT NULL,
   alt_text VARCHAR(200),
   is_cover BOOLEAN DEFAULT false,
