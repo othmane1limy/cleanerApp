@@ -87,7 +87,7 @@ export const cleanerService = {
       .select(`
         *,
         cleaner_services(*),
-        cleaner_gallery(*),
+        cleaner_images(*),
         reviews(rating, comment, created_at, client_profiles(first_name, last_name))
       `)
       .eq('is_active', true)
@@ -115,7 +115,7 @@ export const cleanerService = {
       .select(`
         *,
         cleaner_services(*),
-        cleaner_gallery(*),
+        cleaner_images(*),
         reviews(*, client_profiles(first_name, last_name))
       `)
       .eq('user_id', cleanerId)
@@ -180,7 +180,7 @@ export const cleanerService = {
   // Get gallery images
   async getGallery(cleanerId) {
     const { data, error } = await supabase
-      .from('cleaner_gallery')
+      .from('cleaner_images')
       .select('*')
       .eq('cleaner_id', cleanerId)
       .order('created_at', { ascending: false })
@@ -190,7 +190,7 @@ export const cleanerService = {
   // Add gallery image
   async addGalleryImage(cleanerId, imageData) {
     const { data, error } = await supabase
-      .from('cleaner_gallery')
+      .from('cleaner_images')
       .insert({
         cleaner_id: cleanerId,
         ...imageData
@@ -203,7 +203,7 @@ export const cleanerService = {
   // Delete gallery image
   async deleteGalleryImage(imageId) {
     const { error } = await supabase
-      .from('cleaner_gallery')
+      .from('cleaner_images')
       .delete()
       .eq('id', imageId)
     return { error }

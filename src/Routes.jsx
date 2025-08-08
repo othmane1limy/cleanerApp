@@ -24,7 +24,7 @@ const Routes = () => {
       <ScrollToTop />
       <RouterRoutes>
         {/* Define your route here */}
-        <Route path="/" element={<CleanerProfileDetail />} />
+        <Route path="/" element={<ServiceDiscoveryListView />} />
         <Route path="/service-discovery-list-view" element={<ServiceDiscoveryListView />} />
         <Route path="/location-permission-handler" element={<LocationPermissionHandler />} />
         <Route path="/service-discovery-map-view" element={<ServiceDiscoveryMapView />} />

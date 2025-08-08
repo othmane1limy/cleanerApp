@@ -3,11 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
 import Icon from '../../../components/AppIcon';
+import { useAuth } from '../../../context/AuthContext';
 
-const CleanerCard = ({ cleaner }) => {
+const CleanerCard = ({ cleaner, onViewProfile }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleBookNow = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     if (cleaner.is_mobile && cleaner.has_garage) {
       navigate(`/cleaner-profile/${cleaner.user_id}`);
     } else if (cleaner.is_mobile) {
@@ -17,8 +23,12 @@ const CleanerCard = ({ cleaner }) => {
     }
   };
 
-  const handleViewProfile = () => {
-    navigate(`/cleaner-profile-detail/${cleaner?.user_id}`);
+  const handleViewProfileClick = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    onViewProfile(cleaner);
   };
 
   const formatWorkingHours = (hours) => {
@@ -33,7 +43,7 @@ const CleanerCard = ({ cleaner }) => {
     return types.join(' • ');
   };
 
-  const minPrice = cleaner.cleaner_services?.length > 0 
+  const minPrice = cleaner.cleaner_services?.length > 0
     ? Math.min(...cleaner.cleaner_services.map(s => s.price))
     : null;
 
@@ -140,7 +150,7 @@ const CleanerCard = ({ cleaner }) => {
             <Button
               size="sm"
               variant="outline"
-              onClick={handleViewProfile}
+              onClick={handleViewProfileClick}
               className="flex-1"
             >
               <Icon name="Eye" size={16} />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import GlobalHeader from '../../components/ui/GlobalHeader';
 import FilterOverlay from '../../components/ui/FilterOverlay';
 import Button from '../../components/ui/Button';
@@ -15,6 +16,7 @@ import { cleanerService } from '../../lib/supabase';
 const ServiceDiscoveryListView = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, loading: authLoading } = useAuth();
 
   // State management
   const [language, setLanguage] = useState('fr');
@@ -224,8 +226,15 @@ const ServiceDiscoveryListView = () => {
   };
 
   const handleViewProfile = (cleaner) => {
-    navigate('/cleaner-profile-detail', { state: { cleaner } });
+    if (!user) {
+      // Show auth prompt
+      setShowAuthPrompt(true);
+      return;
+    }
+    navigate(`/cleaner-profile-detail/${cleaner.user_id}`, { state: { cleaner } });
   };
+
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   const getEmptyStateType = () => {
     if (hasError) return 'error';
@@ -369,6 +378,50 @@ const ServiceDiscoveryListView = () => {
           <Icon name="Map" size={20} />
         </Button>
       </div>
+
+      {/* Authentication Prompt Modal */}
+      {showAuthPrompt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-background rounded-lg p-6 max-w-md w-full">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Icon name="User" size={24} className="text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">
+                {language === 'ar' ? 'يجب تسجيل الدخول' : 'Connexion requise'}
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                {language === 'ar' 
+                  ? 'يجب تسجيل الدخول لعرض ملفات المنظفين وحجز الخدمات'
+                  : 'Vous devez vous connecter pour voir les profils des nettoyeurs et réserver des services'
+                }
+              </p>
+              <div className="space-y-3">
+                <Button
+                  fullWidth
+                  onClick={() => navigate('/login')}
+                >
+                  {language === 'ar' ? 'تسجيل الدخول' : 'Se connecter'}
+                </Button>
+                <Button
+                  variant="outline"
+                  fullWidth
+                  onClick={() => navigate('/register')}
+                >
+                  {language === 'ar' ? 'إنشاء حساب' : 'Créer un compte'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  fullWidth
+                  onClick={() => setShowAuthPrompt(false)}
+                >
+                  {language === 'ar' ? 'إلغاء' : 'Annuler'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

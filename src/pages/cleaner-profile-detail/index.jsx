@@ -128,9 +128,9 @@ const CleanerProfileDetail = () => {
         setServicesData(transformedServices);
 
         // Transform gallery data
-        const transformedGallery = cleaner.cleaner_gallery?.map(image => ({
+        const transformedGallery = cleaner.cleaner_images?.map(image => ({
           url: image.image_url,
-          caption: image.caption || '',
+          caption: image.alt_text || '',
           category: "work" // This would need to be added to schema
         })) || [];
 
