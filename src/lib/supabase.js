@@ -86,9 +86,9 @@ export const cleanerService = {
       .from('cleaner_profiles')
       .select(`
         *,
-        cleaner_services(*),
-        cleaner_images(*),
-        reviews(rating, comment, created_at, client_profiles(first_name, last_name))
+        cleaner_services!cleaner_services_cleaner_id_fkey(*),
+        cleaner_images!cleaner_images_cleaner_id_fkey(*),
+        reviews!reviews_cleaner_id_fkey(rating, comment, created_at, client_profiles!reviews_client_id_fkey(first_name, last_name))
       `)
       .eq('is_active', true)
 
@@ -114,9 +114,9 @@ export const cleanerService = {
       .from('cleaner_profiles')
       .select(`
         *,
-        cleaner_services(*),
-        cleaner_images(*),
-        reviews(*, client_profiles(first_name, last_name))
+        cleaner_services!cleaner_services_cleaner_id_fkey(*),
+        cleaner_images!cleaner_images_cleaner_id_fkey(*),
+        reviews!reviews_cleaner_id_fkey(*, client_profiles!reviews_client_id_fkey(first_name, last_name))
       `)
       .eq('user_id', cleanerId)
       .single()

@@ -30,13 +30,13 @@ CREATE TABLE cleaner_profiles (
   has_garage BOOLEAN DEFAULT false,
   garage_address TEXT,
   working_hours JSONB DEFAULT '{"start": "08:00", "end": "18:00"}',
-  is_active BOOLEAN DEFAULT false,
+  is_active BOOLEAN DEFAULT true,
   is_verified BOOLEAN DEFAULT false,
   rating DECIMAL(3,2) DEFAULT 0,
-  review_count INTEGER DEFAULT 0,
-  avatar_url TEXT,
+  total_reviews INTEGER DEFAULT 0,
+  profile_image TEXT,
   cover_image_url TEXT,
-  description TEXT,
+  bio TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -44,7 +44,7 @@ CREATE TABLE cleaner_profiles (
 -- Cleaner Services
 CREATE TABLE cleaner_services (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cleaner_id UUID REFERENCES cleaner_profiles(user_id) ON DELETE CASCADE,
+  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
   description TEXT,
   price DECIMAL(10,2) NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE cleaner_services (
 -- Cleaner Images/Gallery
 CREATE TABLE cleaner_images (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cleaner_id UUID REFERENCES cleaner_profiles(user_id) ON DELETE CASCADE,
+  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   image_url TEXT NOT NULL,
   alt_text VARCHAR(200),
   is_cover BOOLEAN DEFAULT false,
@@ -68,8 +68,8 @@ CREATE TABLE cleaner_images (
 -- Bookings
 CREATE TABLE bookings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id UUID REFERENCES client_profiles(user_id) ON DELETE CASCADE,
-  cleaner_id UUID REFERENCES cleaner_profiles(user_id) ON DELETE CASCADE,
+  client_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   service_id UUID REFERENCES cleaner_services(id),
   status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled')),
   booking_type VARCHAR(20) DEFAULT 'mobile' CHECK (booking_type IN ('mobile', 'garage')),
@@ -86,8 +86,8 @@ CREATE TABLE bookings (
 CREATE TABLE reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
-  client_id UUID REFERENCES client_profiles(user_id) ON DELETE CASCADE,
-  cleaner_id UUID REFERENCES cleaner_profiles(user_id) ON DELETE CASCADE,
+  client_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   rating INTEGER CHECK (rating >= 1 AND rating <= 5),
   comment TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -124,17 +124,11 @@ CREATE POLICY "Users can delete their own cleaner profile" ON cleaner_profiles F
 
 -- RLS Policies for cleaner_services
 CREATE POLICY "Users can view all cleaner services" ON cleaner_services FOR SELECT USING (true);
-CREATE POLICY "Cleaners can manage their own services" ON cleaner_services FOR ALL USING (
-  auth.uid() = cleaner_id OR 
-  auth.uid() IN (SELECT user_id FROM cleaner_profiles WHERE user_id = cleaner_services.cleaner_id)
-);
+CREATE POLICY "Cleaners can manage their own services" ON cleaner_services FOR ALL USING (auth.uid() = cleaner_id);
 
 -- RLS Policies for cleaner_images
 CREATE POLICY "Users can view all cleaner images" ON cleaner_images FOR SELECT USING (true);
-CREATE POLICY "Cleaners can manage their own images" ON cleaner_images FOR ALL USING (
-  auth.uid() = cleaner_id OR 
-  auth.uid() IN (SELECT user_id FROM cleaner_profiles WHERE user_id = cleaner_images.cleaner_id)
-);
+CREATE POLICY "Cleaners can manage their own images" ON cleaner_images FOR ALL USING (auth.uid() = cleaner_id);
 
 -- RLS Policies for bookings
 CREATE POLICY "Users can view their own bookings" ON bookings FOR SELECT USING (
@@ -152,3 +146,21 @@ CREATE POLICY "Clients can create reviews for their bookings" ON reviews FOR INS
   EXISTS (SELECT 1 FROM bookings WHERE id = booking_id AND client_id = auth.uid())
 );
 CREATE POLICY "Users can update their own reviews" ON reviews FOR UPDATE USING (auth.uid() = client_id);
+
+-- Functions to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_client_profiles_updated_at BEFORE UPDATE ON client_profiles 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_cleaner_profiles_updated_at BEFORE UPDATE ON cleaner_profiles 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
