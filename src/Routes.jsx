@@ -15,7 +15,10 @@ import BookingConfirmation from './pages/booking-confirmation';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import CleanerDashboard from './pages/cleaner-dashboard';
-
+import TestSupabase from './pages/TestSupabase';
+import TestEmailConfig from './pages/TestEmailConfig';
+import ClientProfile from './pages/client-profile';
+import EditClientProfile from './pages/edit-client-profile';
 
 const Routes = () => {
   return (
@@ -37,6 +40,10 @@ const Routes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/cleaner-dashboard" element={<CleanerDashboard />} />
+        <Route path="/test-supabase" element={<TestSupabase />} />
+        <Route path="/test-email" element={<TestEmailConfig />} />
+        <Route path="/client-profile" element={<ClientProfile />} />
+        <Route path="/edit-client-profile" element={<EditClientProfile />} />
         <Route path="*" element={<NotFound />} />
       </RouterRoutes>
       </ErrorBoundary>

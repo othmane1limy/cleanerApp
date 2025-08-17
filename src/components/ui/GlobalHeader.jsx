@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import Icon from '../AppIcon';
 import Button from './Button';
 
@@ -14,6 +15,7 @@ const GlobalHeader = ({
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   // Load saved language preference
   useEffect(() => {
@@ -47,6 +49,11 @@ const GlobalHeader = ({
     setTimeout(() => {
       setIsLocationLoading(false);
     }, 1500);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
   };
 
   const getLocationText = () => {
@@ -161,6 +168,60 @@ const GlobalHeader = ({
             iconSize={20}
             className="text-muted-foreground hover:text-foreground"
           />
+
+          {/* Authentication Section */}
+          {user ? (
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (user.user_metadata?.user_type === 'cleaner') {
+                    navigate('/cleaner-dashboard');
+                  } else {
+                    navigate('/client-profile');
+                  }
+                }}
+                iconName="User"
+                iconPosition="left"
+                iconSize={16}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <span className="hidden sm:inline ml-2">
+                  {user.user_metadata?.user_type === 'cleaner' ? 'Dashboard' : 'Profile'}
+                </span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <span className="hidden sm:inline">Déconnexion</span>
+                <Icon name="LogOut" size={16} className="sm:hidden" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/login')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <span className="hidden sm:inline">Connexion</span>
+                <Icon name="LogIn" size={16} className="sm:hidden" />
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => navigate('/register')}
+              >
+                <span className="hidden sm:inline">S'inscrire</span>
+                <Icon name="UserPlus" size={16} className="sm:hidden" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

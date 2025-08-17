@@ -58,42 +58,87 @@ const Register = () => {
     setLoading(true);
     setError('');
 
+    // Validate required fields
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.password.trim() || !formData.phone.trim()) {
+      setError('Veuillez remplir tous les champs obligatoires');
+      setLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Les mots de passe ne correspondent pas');
       setLoading(false);
       return;
     }
 
+    if (formData.password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères');
+      setLoading(false);
+      return;
+    }
+
+    // Additional validation for cleaner accounts
+    if (userType === 'cleaner') {
+      if (!formData.nationalId.trim() || !formData.serviceArea.trim()) {
+        setError('Veuillez remplir tous les champs obligatoires pour les nettoyeurs');
+        setLoading(false);
+        return;
+      }
+    }
+
     const userData = {
-      first_name: formData.firstName,
-      last_name: formData.lastName,
-      phone: formData.phone,
+      first_name: formData.firstName.trim(),
+      last_name: formData.lastName.trim(),
+      phone: formData.phone.trim(),
       ...(userType === 'cleaner' && {
-        national_id: formData.nationalId,
-        vehicle_registration: formData.vehicleRegistration,
-        business_license: formData.businessLicense,
-        business_name: formData.businessName,
-        service_area: formData.serviceArea,
+        national_id: formData.nationalId.trim(),
+        vehicle_registration: formData.vehicleRegistration.trim(),
+        business_license: formData.businessLicense.trim(),
+        business_name: formData.businessName.trim(),
+        service_area: formData.serviceArea.trim(),
         is_mobile: formData.isMobile,
         has_garage: formData.hasGarage,
-        garage_address: formData.garageAddress,
+        garage_address: formData.garageAddress.trim(),
         working_hours: formData.workingHours
       })
     };
 
-    const { data, error } = await signUp(
-      formData.email,
-      formData.password,
-      userType,
-      userData
-    );
-    
-    if (error) {
-      setError(error.message);
-    } else {
-      navigate('/verify-email');
+    try {
+      console.log('Starting registration process...');
+      
+      const { data, error } = await signUp(
+        formData.email.trim(),
+        formData.password,
+        userType,
+        userData
+      );
+      
+      console.log('Registration response:', { data, error });
+      
+      if (error) {
+        console.error('Registration error:', error);
+        setError(`Erreur lors de l'inscription: ${error.message}`);
+      } else if (data?.user) {
+        // Success - profile created automatically by database trigger
+        setError('');
+        alert(`✅ Compte créé avec succès! 
+
+👤 Votre profil a été créé automatiquement.
+🔗 Vous pouvez maintenant vous connecter à l'application.`);
+        
+        // Redirect to login page
+        setTimeout(() => {
+          navigate('/login');
+        }, 1000);
+      } else {
+        setError('Réponse inattendue du serveur. Veuillez réessayer.');
+      }
+    } catch (err) {
+      console.error('Registration exception:', err);
+      setError(`Erreur inattendue: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
