@@ -10,7 +10,8 @@ const SearchBar = ({
   language = 'fr',
   suggestions = [],
   onSuggestionSelect = () => {},
-  className = ''
+  className = '',
+  placeholder
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
@@ -96,13 +97,15 @@ const SearchBar = ({
         <Input
           ref={inputRef}
           type="search"
-          placeholder={language === 'ar' ? 'ابحث عن منظفين أو خدمات...' : 'Rechercher des nettoyeurs ou services...'}
+          placeholder={
+            placeholder || (language === 'ar' ? 'ابحث بالاسم، المنطقة أو الخدمة...' : 'Rechercher par nom, zone ou service...')
+          }
           value={value}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           className="pr-20 rtl:pr-4 rtl:pl-20"
         />
-        
+
         <div className="absolute right-2 rtl:right-auto rtl:left-2 top-1/2 -translate-y-1/2 flex items-center space-x-1 rtl:space-x-reverse">
           {value && (
             <Button

@@ -30,6 +30,7 @@ CREATE TABLE cleaner_profiles (
   garage_address TEXT,
   working_hours JSONB DEFAULT '{"start": "08:00", "end": "18:00"}',
   is_active BOOLEAN DEFAULT true,
+  is_available BOOLEAN DEFAULT true,
   is_verified BOOLEAN DEFAULT false,
   rating DECIMAL(3,2) DEFAULT 0,
   total_reviews INTEGER DEFAULT 0,
@@ -70,12 +71,13 @@ CREATE TABLE bookings (
   client_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   cleaner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   service_id UUID REFERENCES cleaner_services(id),
-  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled')),
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'on_way', 'arrived', 'in_progress', 'completed', 'cancelled')),
   booking_type VARCHAR(20) DEFAULT 'mobile' CHECK (booking_type IN ('mobile', 'garage')),
   scheduled_date DATE NOT NULL,
   scheduled_time TIME NOT NULL,
   client_address TEXT,
   total_price DECIMAL(10,2) NOT NULL,
+  price DECIMAL(10,2) DEFAULT 0,
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -236,6 +238,21 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW
     EXECUTE FUNCTION handle_new_user();
+
+-- Create earnings view
+CREATE VIEW cleaner_earnings AS
+SELECT 
+  cleaner_id,
+  SUM(price) AS total_earnings,
+  DATE_TRUNC('week', created_at) AS week,
+  DATE_TRUNC('month', created_at) AS month,
+  COUNT(*) AS completed_bookings
+FROM bookings 
+WHERE status = 'completed' AND price IS NOT NULL
+GROUP BY cleaner_id, week, month;
+
+-- Enable realtime for bookings table
+ALTER PUBLICATION supabase_realtime ADD TABLE bookings;
 
 -- Create trigger for updated_at columns
 CREATE TRIGGER update_client_profiles_updated_at BEFORE UPDATE ON client_profiles 

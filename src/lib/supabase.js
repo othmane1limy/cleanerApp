@@ -275,8 +275,77 @@ export const cleanerService = {
       query = query.eq('has_garage', filters.has_garage)
     }
 
+    if (filters.search) {
+      query = query.or(`
+        first_name.ilike.%${filters.search}%,
+        last_name.ilike.%${filters.search}%,
+        business_name.ilike.%${filters.search}%,
+        service_area.ilike.%${filters.search}%
+      `)
+    }
+
+    if (filters.availability !== undefined) {
+      query = query.eq('is_available', filters.availability)
+    }
+
     const { data, error } = await query
     return { data, error }
+  },
+
+  // Search cleaners with enhanced filtering
+  async searchCleaners(searchTerm, filters = {}) {
+    try {
+      console.log('Searching cleaners with term:', searchTerm);
+      
+      let query = supabase
+        .from('cleaner_profiles')
+        .select(`
+          *,
+          cleaner_services!cleaner_services_cleaner_id_fkey(*)
+        `)
+        .eq('is_active', true);
+
+      if (searchTerm) {
+        // Search in multiple fields
+        query = query.or(`
+          first_name.ilike.%${searchTerm}%,
+          last_name.ilike.%${searchTerm}%,
+          business_name.ilike.%${searchTerm}%,
+          service_area.ilike.%${searchTerm}%,
+          bio.ilike.%${searchTerm}%
+        `);
+      }
+
+      // Apply additional filters
+      if (filters.service_area) {
+        query = query.ilike('service_area', `%${filters.service_area}%`);
+      }
+
+      if (filters.is_mobile !== undefined) {
+        query = query.eq('is_mobile', filters.is_mobile);
+      }
+
+      if (filters.has_garage !== undefined) {
+        query = query.eq('has_garage', filters.has_garage);
+      }
+
+      if (filters.is_available !== undefined) {
+        query = query.eq('is_available', filters.is_available);
+      }
+
+      const { data, error } = await query.order('rating', { ascending: false });
+      
+      if (error) {
+        console.error('Search cleaners error:', error);
+      } else {
+        console.log(`Found ${data?.length || 0} cleaners`);
+      }
+        
+      return { data, error };
+    } catch (error) {
+      console.error('Search cleaners exception:', error);
+      return { data: null, error };
+    }
   },
 
   // Get single cleaner by ID
@@ -301,6 +370,39 @@ export const cleanerService = {
       .select()
       .single()
     return { data, error }
+  },
+
+  // Update availability status
+  async updateAvailability(cleanerId, isAvailable) {
+    const { data, error } = await supabase
+      .from('cleaner_profiles')
+      .update({ is_available: isAvailable })
+      .eq('user_id', cleanerId)
+      .select()
+      .single()
+    return { data, error }
+  },
+
+  // Get cleaner earnings
+  async getEarnings(cleanerId) {
+    const { data, error } = await supabase
+      .from('cleaner_earnings')
+      .select('*')
+      .eq('cleaner_id', cleanerId)
+      .order('month', { ascending: false })
+    return { data, error }
+  },
+
+  // Get total earnings
+  async getTotalEarnings(cleanerId) {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('price')
+      .eq('cleaner_id', cleanerId)
+      .eq('status', 'completed')
+
+    const totalEarnings = data?.reduce((sum, booking) => sum + (booking.price || 0), 0) || 0
+    return { data: totalEarnings, error }
   },
 
   // Get cleaner services
@@ -386,9 +488,28 @@ export const bookingService = {
     try {
       console.log('Creating booking with data:', bookingData);
       
+      // Get service details to copy price
+      let servicePrice = bookingData.total_price;
+      if (bookingData.service_id) {
+        const { data: serviceData } = await supabase
+          .from('cleaner_services')
+          .select('price')
+          .eq('id', bookingData.service_id)
+          .single();
+        
+        if (serviceData) {
+          servicePrice = serviceData.price;
+        }
+      }
+      
+      const bookingToInsert = {
+        ...bookingData,
+        price: servicePrice // Copy service price to booking
+      };
+      
       const { data, error } = await supabase
         .from('bookings')
-        .insert(bookingData)
+        .insert(bookingToInsert)
         .select(`
           *,
           cleaner_profiles(first_name, last_name, business_name, phone),
@@ -463,6 +584,34 @@ export const bookingService = {
       .eq('id', bookingId)
       .single()
     return { data, error }
+  },
+
+  // Subscribe to booking updates
+  subscribeToBookings(userId, userType, callback) {
+    const column = userType === 'client' ? 'client_id' : 'cleaner_id';
+    
+    const subscription = supabase
+      .channel('bookings')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `${column}=eq.${userId}`
+        },
+        callback
+      )
+      .subscribe();
+
+    return subscription;
+  },
+
+  // Unsubscribe from bookings
+  unsubscribeFromBookings(subscription) {
+    if (subscription) {
+      supabase.removeChannel(subscription);
+    }
   }
 }
 

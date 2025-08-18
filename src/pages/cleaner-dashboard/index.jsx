@@ -14,8 +14,11 @@ const CleanerDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [bookings, setBookings] = useState([]);
   const [services, setServices] = useState([]);
+  const [earnings, setEarnings] = useState({ total: 0, weekly: [], monthly: [] });
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState('fr');
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [bookingSubscription, setBookingSubscription] = useState(null);
   
   // Form states for editing
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -36,8 +39,29 @@ const CleanerDashboard = () => {
   useEffect(() => {
     if (user && !authLoading) {
       loadCleanerData();
+      setupRealtimeSubscription();
     }
+
+    return () => {
+      if (bookingSubscription) {
+        bookingService.unsubscribeFromBookings(bookingSubscription);
+      }
+    };
   }, [user, authLoading]);
+
+  const setupRealtimeSubscription = () => {
+    if (user) {
+      const subscription = bookingService.subscribeToBookings(
+        user.id,
+        'cleaner',
+        (payload) => {
+          console.log('Booking update received:', payload);
+          loadCleanerData(); // Reload data when booking changes
+        }
+      );
+      setBookingSubscription(subscription);
+    }
+  };
 
   useEffect(() => {
     if (profile && !authLoading) {
@@ -67,6 +91,20 @@ const CleanerDashboard = () => {
       // Load services
       const { data: servicesData } = await cleanerService.getServices(profile?.id);
       setServices(servicesData || []);
+
+      // Load earnings
+      const { data: totalEarnings } = await cleanerService.getTotalEarnings(user.id);
+      const { data: earningsData } = await cleanerService.getEarnings(user.id);
+      
+      setEarnings({
+        total: totalEarnings || 0,
+        data: earningsData || []
+      });
+
+      // Set availability status
+      if (profile) {
+        setIsAvailable(profile.is_available ?? true);
+      }
       
     } catch (error) {
       console.error('Error loading cleaner data:', error);
@@ -111,6 +149,37 @@ const CleanerDashboard = () => {
         setIsAddingService(false);
         setServiceForm({ name: '', description: '', price: '', duration_minutes: 60 });
         loadCleanerData(); // Reload services
+      }
+    } catch (err) {
+      alert(`Erreur: ${err.message}`);
+    }
+  };
+
+  const handleAvailabilityToggle = async () => {
+    try {
+      const newStatus = !isAvailable;
+      const { error } = await cleanerService.updateAvailability(user.id, newStatus);
+      
+      if (error) {
+        alert(`Erreur: ${error.message}`);
+      } else {
+        setIsAvailable(newStatus);
+        alert(`Statut mis à jour: ${newStatus ? 'Disponible' : 'Indisponible'}`);
+      }
+    } catch (err) {
+      alert(`Erreur: ${err.message}`);
+    }
+  };
+
+  const handleBookingStatusUpdate = async (bookingId, newStatus) => {
+    try {
+      const { error } = await bookingService.updateBookingStatus(bookingId, newStatus);
+      
+      if (error) {
+        alert(`Erreur: ${error.message}`);
+      } else {
+        alert('Statut mis à jour avec succès!');
+        loadCleanerData(); // Reload bookings
       }
     } catch (err) {
       alert(`Erreur: ${err.message}`);
@@ -185,20 +254,33 @@ const CleanerDashboard = () => {
                   <p className="text-sm text-muted-foreground">{user.email}</p>
                 </div>
               </div>
-              <div className="flex space-x-2">
-                <Button onClick={() => setIsEditingProfile(true)} variant="outline">
-                  <Icon name="Edit" size={16} className="mr-2" />
-                  Modifier le profil
-                </Button>
-                <Button onClick={() => navigate('/')}>
-                  <Icon name="Plus" size={16} className="mr-2" />
-                  Nouvelle réservation
-                </Button>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">Disponible</span>
+                  <button
+                    onClick={handleAvailabilityToggle}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      isAvailable ? 'bg-green-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        isAvailable ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="flex space-x-2">
+                  <Button onClick={() => setIsEditingProfile(true)} variant="outline">
+                    <Icon name="Edit" size={16} className="mr-2" />
+                    Modifier le profil
+                  </Button>
+                </div>
               </div>
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="bg-muted/50 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-primary">{bookings.length}</p>
                 <p className="text-sm text-muted-foreground">Total Réservations</p>
@@ -218,6 +300,10 @@ const CleanerDashboard = () => {
               <div className="bg-muted/50 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-yellow-600">{services.length}</p>
                 <p className="text-sm text-muted-foreground">Services</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-emerald-600">{earnings.total} DH</p>
+                <p className="text-sm text-muted-foreground">Gains totaux</p>
               </div>
             </div>
           </div>
@@ -254,6 +340,16 @@ const CleanerDashboard = () => {
                 }`}
               >
                 Services ({services.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('earnings')}
+                className={`px-6 py-3 font-medium transition-colors whitespace-nowrap ${
+                  activeTab === 'earnings'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Gains
               </button>
               <button
                 onClick={() => setActiveTab('profile')}
@@ -338,22 +434,71 @@ const CleanerDashboard = () => {
                             )}
                           </div>
 
-                          <div className="flex space-x-2 mt-4">
+                          <div className="flex flex-wrap gap-2 mt-4">
                             <Button variant="outline" size="sm">
                               <Icon name="Eye" size={16} className="mr-2" />
                               Voir les détails
                             </Button>
                             {booking.status === 'pending' && (
                               <>
-                                <Button variant="default" size="sm">
+                                <Button 
+                                  variant="default" 
+                                  size="sm"
+                                  onClick={() => handleBookingStatusUpdate(booking.id, 'confirmed')}
+                                >
                                   <Icon name="Check" size={16} className="mr-2" />
-                                  Confirmer
+                                  Accepter
                                 </Button>
-                                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => handleBookingStatusUpdate(booking.id, 'cancelled')}
+                                >
                                   <Icon name="X" size={16} className="mr-2" />
                                   Refuser
                                 </Button>
                               </>
+                            )}
+                            {booking.status === 'confirmed' && (
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => handleBookingStatusUpdate(booking.id, 'on_way')}
+                              >
+                                <Icon name="Car" size={16} className="mr-2" />
+                                En route
+                              </Button>
+                            )}
+                            {booking.status === 'on_way' && (
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => handleBookingStatusUpdate(booking.id, 'arrived')}
+                              >
+                                <Icon name="MapPin" size={16} className="mr-2" />
+                                Arrivé
+                              </Button>
+                            )}
+                            {booking.status === 'arrived' && (
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => handleBookingStatusUpdate(booking.id, 'in_progress')}
+                              >
+                                <Icon name="Play" size={16} className="mr-2" />
+                                Commencer
+                              </Button>
+                            )}
+                            {booking.status === 'in_progress' && (
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => handleBookingStatusUpdate(booking.id, 'completed')}
+                              >
+                                <Icon name="CheckCircle" size={16} className="mr-2" />
+                                Terminer
+                              </Button>
                             )}
                           </div>
                         </div>
@@ -404,6 +549,78 @@ const CleanerDashboard = () => {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === 'earnings' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Aperçu des gains</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-emerald-600">Total des gains</p>
+                            <p className="text-2xl font-bold text-emerald-700">{earnings.total} DH</p>
+                          </div>
+                          <Icon name="TrendingUp" size={24} className="text-emerald-600" />
+                        </div>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-blue-600">Services terminés</p>
+                            <p className="text-2xl font-bold text-blue-700">
+                              {bookings.filter(b => b.status === 'completed').length}
+                            </p>
+                          </div>
+                          <Icon name="CheckCircle" size={24} className="text-blue-600" />
+                        </div>
+                      </div>
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-purple-600">Gain moyen</p>
+                            <p className="text-2xl font-bold text-purple-700">
+                              {bookings.filter(b => b.status === 'completed').length > 0 
+                                ? Math.round(earnings.total / bookings.filter(b => b.status === 'completed').length)
+                                : 0
+                              } DH
+                            </p>
+                          </div>
+                          <Icon name="DollarSign" size={24} className="text-purple-600" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Historique des gains</h4>
+                      {earnings.data && earnings.data.length > 0 ? (
+                        <div className="space-y-3">
+                          {earnings.data.slice(0, 10).map((earning, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                              <div>
+                                <p className="font-medium">
+                                  {new Date(earning.month).toLocaleDateString('fr-FR', { 
+                                    year: 'numeric', 
+                                    month: 'long' 
+                                  })}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {earning.completed_bookings} services terminés
+                                </p>
+                              </div>
+                              <p className="font-semibold text-lg">{earning.total_earnings} DH</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-8">
+                          Aucun gain enregistré pour le moment
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 

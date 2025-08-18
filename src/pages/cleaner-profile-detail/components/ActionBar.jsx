@@ -1,10 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../../../components/ui/Button';
 import Icon from '../../../components/AppIcon';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext';
 
-const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare, onSave }) => {
+const ActionBar = ({ cleaner, language, onServiceSelect }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Check if current user is the cleaner viewing their own profile
+  const isOwnProfile = user && user.id === cleaner?.user_id;
 
   const formatPhoneNumber = (phone) => {
     // Format Moroccan phone number for display
@@ -30,8 +35,8 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
   const handleBooking = () => {
     // Placeholder for actual booking logic or navigation
     // This would typically navigate to a booking screen or open a modal
-    if (onBooking) {
-      onBooking();
+    if (onServiceSelect) { // Modified to use onServiceSelect for potential service selection
+      onServiceSelect(cleaner);
     }
   };
 
@@ -70,7 +75,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onSave}
+                onClick={() => navigate('/cleaner-profile-edit')} // Assuming a route for cleaner profile editing
                 iconName="Heart"
                 iconSize={16}
                 className="hidden lg:flex"
@@ -81,7 +86,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onShare}
+                onClick={() => { /* Share logic here */ }}
                 iconName="Share"
                 iconSize={16}
                 className="hidden lg:flex"
@@ -92,7 +97,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
               {/* Primary Actions */}
               <Button
                 variant="outline"
-                onClick={onCall}
+                onClick={() => window.open(`tel:${cleaner?.phone}`)}
                 iconName="Phone"
                 iconPosition="left"
                 iconSize={16}
@@ -102,7 +107,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
 
               <Button
                 variant="outline"
-                onClick={onDirections}
+                onClick={() => { /* Directions logic here */ }}
                 iconName="Navigation"
                 iconPosition="left"
                 iconSize={16}
@@ -110,21 +115,36 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
                 {getDirectionsText()}
               </Button>
 
-              <Button
-                variant="default"
-                onClick={() => navigate('/mobile-booking')}
-                iconName={getBookingIcon()}
-                iconPosition="left"
-                iconSize={16}
-                size="lg"
-                className="px-8"
-              >
-                {getBookingText()}
-              </Button>
+              {isOwnProfile ? (
+                // Cleaner viewing their own profile
+                <Button
+                  variant="default"
+                  onClick={() => navigate('/cleaner-dashboard')} // Navigate to cleaner dashboard to add services
+                  iconName="Plus"
+                  iconPosition="left"
+                  iconSize={16}
+                  className="px-8"
+                >
+                  {language === 'ar' ? 'إضافة خدمات' : 'Ajouter services'}
+                </Button>
+              ) : (
+                // Client viewing cleaner profile
+                <Button
+                  variant="default"
+                  onClick={handleBooking}
+                  iconName={getBookingIcon()}
+                  iconPosition="left"
+                  iconSize={16}
+                  className="px-8"
+                >
+                  {getBookingText()}
+                </Button>
+              )}
             </div>
           </div>
         </div>
       </div>
+
       {/* Mobile Action Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-modal">
         <div className="px-4 py-3">
@@ -133,7 +153,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
             <Button
               variant="ghost"
               size="sm"
-              onClick={onSave}
+              onClick={() => navigate('/cleaner-profile-edit')} // Assuming a route for cleaner profile editing
               iconName="Heart"
               iconSize={16}
               className="flex-1"
@@ -144,7 +164,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
             <Button
               variant="ghost"
               size="sm"
-              onClick={onShare}
+              onClick={() => { /* Share logic here */ }}
               iconName="Share"
               iconSize={16}
               className="flex-1"
@@ -155,7 +175,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
             <Button
               variant="ghost"
               size="sm"
-              onClick={onDirections}
+              onClick={() => { /* Directions logic here */ }}
               iconName="Navigation"
               iconSize={16}
               className="flex-1"
@@ -168,7 +188,7 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
           <div className="flex space-x-3 rtl:space-x-reverse">
             <Button
               variant="outline"
-              onClick={onCall}
+              onClick={() => window.open(`tel:${cleaner?.phone}`)}
               iconName="Phone"
               iconPosition="left"
               iconSize={18}
@@ -177,35 +197,48 @@ const ActionBar = ({ cleaner, language, onCall, onDirections, onBooking, onShare
               {getCallText()}
             </Button>
 
-            <Button
-              variant="default"
-              onClick={() => navigate('/mobile-booking')}
-              iconName="Calendar"
-              iconPosition="left"
-              iconSize={18}
-              className="flex-1"
-            >
-              {getBookingText()}
-            </Button>
+            {isOwnProfile ? (
+              // Cleaner viewing their own profile
+              <Button
+                className="flex-1"
+                iconName="Plus"
+                iconPosition="left"
+                onClick={() => navigate('/cleaner-dashboard')} // Navigate to cleaner dashboard to add services
+              >
+                {language === 'ar' ? 'إضافة خدمات' : 'Ajouter services'}
+              </Button>
+            ) : (
+              // Client viewing cleaner profile
+              <Button
+                className="flex-1"
+                iconName={getBookingIcon()}
+                iconPosition="left"
+                onClick={handleBooking}
+              >
+                {getBookingText()}
+              </Button>
+            )}
           </div>
         </div>
 
         {/* Safe Area for devices with home indicator */}
         <div className="h-safe-area-inset-bottom bg-card"></div>
       </div>
+
       {/* Floating Quick Actions (Mobile) */}
       <div className="md:hidden fixed bottom-24 right-4 z-40 flex flex-col space-y-2">
         {cleaner?.isOnline && (
           <Button
             variant="default"
             size="icon"
-            onClick={onCall}
+            onClick={() => window.open(`tel:${cleaner?.phone}`)}
             className="w-12 h-12 rounded-full shadow-modal bg-success hover:bg-success/90"
           >
             <Icon name="Phone" size={20} color="white" />
           </Button>
         )}
       </div>
+
       {/* Contact Info Modal Trigger (Hidden but accessible) */}
       <div className="sr-only">
         <span>{formatPhoneNumber(cleaner?.phone)}</span>
