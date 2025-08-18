@@ -15,6 +15,7 @@ const MobileBookingFlow = () => {
   const location = useLocation();
   const { user } = useAuth();
   const cleaner = location.state?.cleaner;
+  const selectedService = location.state?.selectedService;
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
