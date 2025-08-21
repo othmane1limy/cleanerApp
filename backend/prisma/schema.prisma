@@ -1,0 +1,179 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// =====================
+// Core Identity
+// =====================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  phone         String?
+  passwordHash  String   @map("password_hash")
+  role          String   // CLIENT, CLEANER, ADMIN
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  clientProfile  ClientProfile?
+  cleanerProfile CleanerProfile?
+  
+  // Bookings as client or cleaner
+  clientBookings  Booking[] @relation("ClientBookings")
+  cleanerBookings Booking[] @relation("CleanerBookings")
+  
+  // Reviews
+  clientReviews  Review[] @relation("ClientReviews")
+  cleanerReviews Review[] @relation("CleanerReviews")
+  
+  @@map("users")
+}
+
+model ClientProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique @map("user_id")
+  firstName         String   @map("first_name")
+  lastName          String   @map("last_name")
+  avatarUrl         String?  @map("avatar_url")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("client_profiles")
+}
+
+model CleanerProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique @map("user_id")
+  businessName        String   @map("business_name")
+  bio                 String?
+  ratingAvg           Float    @default(0.0) @map("rating_avg")
+  ratingCount         Int      @default(0) @map("rating_count")
+  isVerified          Boolean  @default(false) @map("is_verified")
+  active              Boolean  @default(true)
+  completedJobsCount  Int      @default(0) @map("completed_jobs_count")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Services
+  services CleanerService[]
+
+  @@map("cleaner_profiles")
+}
+
+// =====================
+// Catalog
+// =====================
+
+model ServiceCategory {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  services Service[]
+
+  @@map("service_categories")
+}
+
+model Service {
+  id              String   @id @default(cuid())
+  categoryId      String   @map("category_id")
+  name            String
+  description     String?
+  baseDurationMin Int      @map("base_duration_min")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  category       ServiceCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  cleanerServices CleanerService[]
+
+  @@map("services")
+}
+
+model CleanerService {
+  id             String   @id @default(cuid())
+  cleanerUserId  String   @map("cleaner_user_id")
+  serviceId      String   @map("service_id")
+  priceMad       Float    @map("price_mad")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  cleaner CleanerProfile @relation(fields: [cleanerUserId], references: [userId], onDelete: Cascade)
+  service Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  
+  // Bookings
+  bookings  Booking[]
+
+  @@unique([cleanerUserId, serviceId])
+  @@map("cleaner_services")
+}
+
+// =====================
+// Bookings
+// =====================
+
+model Booking {
+  id               String        @id @default(cuid())
+  clientUserId     String        @map("client_user_id")
+  cleanerUserId    String?       @map("cleaner_user_id")
+  cleanerServiceId String        @map("cleaner_service_id")
+  scheduledAt      DateTime      @map("scheduled_at")
+  addressText      String        @map("address_text")
+  lat              Float
+  lng              Float
+  totalPriceMad    Float         @map("total_price_mad")
+  status           String        @default("REQUESTED") // REQUESTED, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  client         User           @relation("ClientBookings", fields: [clientUserId], references: [id], onDelete: Cascade)
+  cleaner        User?          @relation("CleanerBookings", fields: [cleanerUserId], references: [id])
+  cleanerService CleanerService @relation(fields: [cleanerServiceId], references: [id])
+  
+  // Reviews
+  reviews  Review[]
+
+  @@map("bookings")
+}
+
+// =====================
+// Reputation
+// =====================
+
+model Review {
+  id             String   @id @default(cuid())
+  bookingId      String   @map("booking_id")
+  clientUserId   String   @map("client_user_id")
+  cleanerUserId  String   @map("cleaner_user_id")
+  rating         Int
+  comment        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  client  User    @relation("ClientReviews", fields: [clientUserId], references: [id])
+  cleaner User    @relation("CleanerReviews", fields: [cleanerUserId], references: [id])
+
+  @@unique([bookingId]) // One review per booking
+  @@map("reviews")
+}
